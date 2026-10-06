@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Spese</title>
+<meta name="theme-color" content="#2d4a8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spese">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f3f4f7; --card:#ffffff; --text:#181b22; --muted:#5d6472;
+  --line:#dde1e8; --accent:#2d4a8a; --accent-soft:#e4eaf6;
+  --pos:#1d7a4f; --pos-soft:#e2f3ea; --neg:#b4531a; --neg-soft:#fbeadf;
+  --danger:#b32828; --danger-soft:#fdeaea;
+  --radius:14px; --safe-b:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#101217; --card:#1a1d24; --text:#eef0f4; --muted:#9aa2b1;
+    --line:#2b303a; --accent:#8fa8e6; --accent-soft:#1e2638;
+    --pos:#5fcf98; --pos-soft:#17291f; --neg:#f2a06a; --neg-soft:#33221a;
+    --danger:#ff8a80; --danger-soft:#3a1f1f;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+
+header{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 16px 6px}
+.hrow{display:flex;align-items:center;gap:10px;min-height:44px}
+.htitle{font-size:22px;font-weight:700;letter-spacing:-.02em;flex:1;margin:0}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;color:var(--text)}
+.iconbtn:active{background:var(--line)}
+.iconbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+main{padding:4px 16px calc(96px + var(--safe-b))}
+
+/* saldo */
+.saldo{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px 18px 16px;margin-bottom:18px;text-align:center}
+.saldo .chi{font-size:15px;font-weight:600;color:var(--muted);margin:0}
+.saldo .cifra{font-size:44px;font-weight:750;letter-spacing:-.03em;margin:2px 0 4px;font-variant-numeric:tabular-nums}
+.saldo.pos .cifra{color:var(--pos)}
+.saldo.neg .cifra{color:var(--neg)}
+.saldo .sotto{font-size:13px;color:var(--muted);margin:0 0 14px}
+.btn{width:100%;height:52px;border-radius:14px;background:var(--accent);color:#fff;font-size:17px;font-weight:600}
+.btn:disabled{opacity:.4}
+.btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
+.btn.danger{background:var(--danger-soft);color:var(--danger);margin-top:12px}
+@media (prefers-color-scheme:dark){.btn:not(.ghost):not(.danger){color:#101217}}
+
+/* elenco */
+.sez{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 2px 8px}
+.lista{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:22px}
+.voce{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
+.voce:last-child{border-bottom:none}
+.voce:active{background:var(--accent-soft)}
+.voce .sx{flex:1;min-width:0}
+.voce .desc{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voce .info{font-size:13px;color:var(--muted);margin-top:1px}
+.voce .dx{text-align:right;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.voce .imp{font-weight:600}
+.voce .eff{font-size:13px;font-weight:600;margin-top:1px}
+.eff.pos{color:var(--pos)} .eff.neg{color:var(--neg)} .eff.zero{color:var(--muted);font-weight:500}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent);margin-left:4px;vertical-align:1px}
+.vuoto{text-align:center;color:var(--muted);padding:28px 18px}
+.vuoto p{margin:4px 0}
+
+details.periodo{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+details.periodo summary{list-style:none;padding:13px 14px;display:flex;gap:10px;align-items:center;cursor:pointer}
+details.periodo summary::-webkit-details-marker{display:none}
+details.periodo summary .sx{flex:1}
+details.periodo summary .t{font-weight:600}
+details.periodo summary .s{font-size:13px;color:var(--muted)}
+details.periodo summary svg{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;transition:transform .2s}
+details.periodo[open] summary svg{transform:rotate(180deg)}
+details.periodo .lista{border:none;border-top:1px solid var(--line);border-radius:0;margin:0}
+
+/* avvisi */
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--accent);border-radius:10px;padding:11px 12px;margin-bottom:12px;font-size:14px;color:var(--muted)}
+.notice b{color:var(--text)}
+.notice button{color:var(--accent);font-weight:600;padding:4px 0}
+.notice .x{margin-left:auto;color:var(--muted);font-size:20px;line-height:1;padding:0 4px}
+.notice.ko{border-left-color:var(--danger)}
+
+.fab{position:fixed;left:16px;right:16px;bottom:calc(16px + var(--safe-b));z-index:30;height:56px;border-radius:16px;
+  background:var(--accent);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.fab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+@media (prefers-color-scheme:dark){.fab{color:#101217}}
+
+/* schermate */
+.screen{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);-webkit-overflow-scrolling:touch}
+.sbar{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:6px 10px;z-index:5}
+.sbar h2{font-size:17px;font-weight:700;margin:0;flex:1;text-align:center}
+.sbar .txtbtn{color:var(--accent);font-weight:600;padding:10px 8px;min-width:72px}
+.sbar .txtbtn.l{text-align:left} .sbar .txtbtn.r{text-align:right}
+.sbody{padding:16px 16px calc(28px + var(--safe-b))}
+
+label.field,.field{display:block;margin-bottom:18px}
+.lbl{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=date],textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-height:48px}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block}
+textarea{resize:vertical;min-height:70px}
+.importo{position:relative}
+.importo input{font-size:32px;font-weight:700;height:64px;padding-right:44px;font-variant-numeric:tabular-nums}
+.importo span{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:600;color:var(--muted)}
+.sugg{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.sugg button{padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:14px}
+.seg{display:flex;background:var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;min-height:46px;border-radius:10px;font-weight:600;color:var(--muted);font-size:15px;padding:0 4px}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.riepilogo{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:12px 14px;font-weight:600;margin-bottom:18px;text-align:center}
+.riepilogo.pos{background:var(--pos-soft);color:var(--pos)}
+.riepilogo.neg{background:var(--neg-soft);color:var(--neg)}
+
+.sect{margin-bottom:26px}
+.sect h3{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px}
+.addrow{display:flex;gap:8px;margin-top:10px}
+.addrow input{flex:1}
+.addrow button{flex:0 0 auto;padding:0 18px;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;min-height:48px}
+.meta{font-size:13px;color:var(--muted);margin-top:10px}
+.meta.ok{color:var(--pos);font-weight:600}
+.meta.ko{color:var(--danger);font-weight:600}
+
+#toast{position:fixed;left:50%;bottom:calc(86px + var(--safe-b));transform:translateX(-50%) translateY(12px);
+  background:#181b22;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
+  z-index:100;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-color-scheme:dark){#toast{background:#eef0f4;color:#101217}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1 class="htitle">Spese</h1>
+    <button class="iconbtn" id="btn-settings" aria-label="Impostazioni">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="saldo" id="saldo">
+    <p class="chi" id="saldo-chi">Siete pari</p>
+    <p class="cifra" id="saldo-cifra">0,00 &euro;</p>
+    <p class="sotto" id="saldo-sotto"></p>
+    <button class="btn" id="btn-azzera" disabled>Ci siamo messi a posto</button>
+  </section>
+
+  <div id="notices"></div>
+
+  <h2 class="sez" id="titolo-aperte">Da sistemare</h2>
+  <div class="lista" id="aperte"></div>
+
+  <div id="box-chiusi" hidden>
+    <h2 class="sez">Conti chiusi</h2>
+    <div id="chiusi"></div>
+  </div>
+</main>
+
+<button class="fab" id="btn-new">
+  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  Nuova spesa
+</button>
+
+<!-- SCHEDA VOCE -->
+<section class="screen" id="screen-edit" hidden>
+  <div class="sbar">
+    <button class="txtbtn l" id="edit-cancel">Annulla</button>
+    <h2 id="edit-title">Nuova spesa</h2>
+    <button class="txtbtn r" id="edit-save">Salva</button>
+  </div>
+  <div class="sbody">
+    <label class="field">
+      <span class="lbl">Quanto</span>
+      <div class="importo">
+        <input type="text" id="f-importo" inputmode="decimal" placeholder="0,00" autocomplete="off" enterkeyhint="next">
+        <span>&euro;</span>
+      </div>
+    </label>
+
+    <div class="field" id="campo-desc">
+      <label class="lbl" for="f-desc">Cosa</label>
+      <input type="text" id="f-desc" placeholder="Es. Spesa Coop" autocomplete="off" enterkeyhint="done">
+      <div class="sugg" id="sugg"></div>
+    </div>
+
+    <label class="field">
+      <span class="lbl">Quando</span>
+      <input type="date" id="f-data">
+    </label>
+
+    <div class="field" id="campo-pagato">
+      <span class="lbl" id="lbl-pagato">Chi ha pagato</span>
+      <div class="seg" id="seg-pagato">
+        <button type="button" data-v="paolo">Io</button>
+        <button type="button" data-v="silvia">Silvia</button>
+      </div>
+    </div>
+
+    <div class="field" id="campo-doveva">
+      <span class="lbl">Di chi era la spesa</span>
+      <div class="seg" id="seg-doveva">
+        <button type="button" data-v="meta">Metà a testa</button>
+        <button type="button" data-v="paolo">Solo mia</button>
+        <button type="button" data-v="silvia">Solo di Silvia</button>
+      </div>
+    </div>
+
+    <div class="riepilogo" id="riepilogo"></div>
+
+    <label class="field">
+      <span class="lbl">Note (facoltative)</span>
+      <textarea id="f-note"></textarea>
+    </label>
+    <p class="meta" id="edit-origine" style="margin:-8px 0 14px"></p>
+
+    <button class="btn danger" id="edit-delete" hidden>Elimina</button>
+  </div>
+</section>
+
+<!-- IMPOSTAZIONI -->
+<section class="screen" id="screen-settings" hidden>
+  <div class="sbar">
+    <button class="txtbtn l" id="settings-back">Indietro</button>
+    <h2>Impostazioni</h2>
+    <span class="txtbtn r"></span>
+  </div>
+  <div class="sbody">
+    <div class="sect">
+      <h3>Archivio online</h3>
+      <p class="meta" id="sync-stato" style="margin-top:0"></p>
+      <div id="sync-collegato" hidden>
+        <button class="btn" id="btn-sync">Sincronizza ora</button>
+        <button class="btn ghost" id="btn-scollega" style="margin-top:10px">Scollega</button>
+      </div>
+      <div id="sync-scollegato" hidden>
+        <p class="meta" style="margin-top:0">Collegando l'archivio, ogni spesa finisce anche in un archivio privato su GitHub:
+        da lì arrivano le bollette lette dalle email, e cambiando telefono ritrovi tutto. Serve la chiave di accesso creata sul tuo account.</p>
+        <div class="addrow">
+          <input type="text" id="gh-token" placeholder="Incolla la chiave" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button id="btn-collega">Collega</button>
+        </div>
+      </div>
+    </div>
+    <div class="sect">
+      <h3>Bollette dalle email</h3>
+      <p class="meta" id="bollette-stato" style="margin-top:0"></p>
+    </div>
+    <div class="sect">
+      <h3>Backup su file</h3>
+      <button class="btn" id="btn-export">Esporta backup</button>
+      <button class="btn ghost" id="btn-import" style="margin-top:10px">Importa backup</button>
+      <input type="file" id="file-import" accept="application/json,.json" hidden>
+      <p class="meta" id="backup-meta"></p>
+    </div>
+  </div>
+</section>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------- archivio sul telefono (IndexedDB) ---------- */
+const DB_NAME = "spese", DB_VER = 1;
+let _db = null;
+function openDB(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, DB_VER);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if(!db.objectStoreNames.contains("voci")) db.createObjectStore("voci", {keyPath:"id"});
+      if(!db.objectStoreNames.contains("impostazioni")) db.createObjectStore("impostazioni", {keyPath:"chiave"});
+      /* voci eliminate in attesa di essere tolte anche dall'archivio online */
+      if(!db.objectStoreNames.contains("eliminati")) db.createObjectStore("eliminati", {keyPath:"id"});
+    };
+    r.onsuccess = () => {
+      _db = r.result;
+      _db.onversionchange = () => { _db.close(); _db = null; };
+      res(_db);
+    };
+    r.onerror = () => rej(r.error);
+    r.onblocked = () => rej(new Error("Archivio occupato da un'altra scheda"));
+  });
+}
+function tx(store, mode, fn){
+  return openDB().then(db => new Promise((res, rej) => {
+    const t = db.transaction(store, mode);
+    const out = fn(t.objectStore(store));
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  }));
+}
+const store = {
+  all:   () => tx("voci", "readonly",  s => s.getAll()),
+  get:   id => tx("voci", "readonly",  s => s.get(id)),
+  put:   v  => tx("voci", "readwrite", s => s.put(v)),
+  del:   id => tx("voci", "readwrite", s => s.delete(id)),
+  clear: () => tx("voci", "readwrite", s => s.clear()),
+  setting:    k => tx("impostazioni", "readonly",  s => s.get(k)).then(r => r ? r.valore : undefined),
+  setSetting: (k, valore) => tx("impostazioni", "readwrite", s => s.put({chiave:k, valore})),
+  eliminati:       () => tx("eliminati", "readonly",  s => s.getAll()),
+  segnaEliminato:  v  => tx("eliminati", "readwrite", s => s.put(v)),
+  scordaEliminato: id => tx("eliminati", "readwrite", s => s.delete(id))
+};
+
+/* ---------- stato ---------- */
+const stato = {
+  voci: [],
+  edit: null   // {id, tipo, pagato, doveva}
+};
+
+/* ---------- utilita' ---------- */
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("on"), 2200);
+}
+const fmt = new Intl.NumberFormat("it-IT", {minimumFractionDigits:2, maximumFractionDigits:2, useGrouping:"always"});
+const euro = cent => fmt.format(Math.abs(cent) / 100) + " €";
+const segno = cent => (cent > 0 ? "+" : cent < 0 ? "−" : "") + fmt.format(Math.abs(cent) / 100);
+function oggiIso(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+const MESI = ["gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"];
+function dataBreve(iso){
+  if(!iso) return "";
+  const [a, m, g] = iso.split("-").map(Number);
+  return g + " " + MESI[m - 1] + (a !== new Date().getFullYear() ? " " + a : "");
+}
+function dataLunga(ts){
+  if(!ts) return "mai";
+  return new Date(ts).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"});
+}
+function nuovoId(dataIso){
+  /* l'anno davanti all'id decide la cartella dell'archivio online (voci/AAAA/) */
+  return String(new Date().getFullYear()) + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+}
+function percorso(id){ return "voci/" + id.slice(0, 4) + "/" + id + ".json"; }
+function leggiImporto(s){
+  let t = String(s || "").replace(/[\s€]/g, "");
+  if(t.includes(",") && t.includes(".")) t = t.replace(/\./g, "").replace(",", ".");
+  else t = t.replace(",", ".");
+  const n = Number(t);
+  return isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
+}
+const normalizza = s => String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+/* ---------- il conto ----------
+   Positivo = Silvia deve a Paolo. Una voce pagata e dovuta dalla stessa
+   persona non sposta niente: e' una spesa personale (fase 2). */
+function centesimi(v){ return Math.round(Number(v.importo || 0) * 100); }
+function effetto(v){
+  const c = centesimi(v);
+  if(v.tipo === "conguaglio") return v.pagato === "silvia" ? -c : c;
+  let quota;
+  if(v.doveva === "meta") quota = Math.round(c / 2);   // meta' di chi ha pagato e' a carico dell'altro
+  else if(v.doveva === v.pagato) return 0;            // spesa personale
+  else quota = c;                                      // pagata tutta per l'altro
+  return v.pagato === "paolo" ? quota : -quota;
+}
+function saldoTotale(){ return stato.voci.reduce((s, v) => s + effetto(v), 0); }
+
+/* periodi: le voci in ordine di inserimento, ogni conguaglio chiude un periodo.
+   Si usa l'ordine di inserimento e non la data: una bolletta arrivata dopo
+   l'azzeramento ma datata prima deve comparire fra quelle da sistemare. */
+function periodi(){
+  const ord = stato.voci.slice().sort((a, b) => (a.creato || 0) - (b.creato || 0));
+  const chiusi = [];
+  let corrente = [];
+  for(const v of ord){
+    if(v.tipo === "conguaglio"){ chiusi.push({voci: corrente, conguaglio: v}); corrente = []; }
+    else corrente.push(v);
+  }
+  return {aperte: corrente, chiusi: chiusi.reverse()};
+}
+const perData = (a, b) => (b.data || "").localeCompare(a.data || "") || (b.creato || 0) - (a.creato || 0);
+
+/* ---------- disegno ---------- */
+function rigaVoce(v){
+  const e = effetto(v);
+  let info;
+  if(v.tipo === "conguaglio"){
+    info = dataBreve(v.data) + " · " + (v.pagato === "silvia" ? "Silvia ti ha dato i soldi" : "hai dato i soldi a Silvia");
+  }else{
+    const chi = v.pagato === "silvia" ? "pagato da Silvia" : "pagato da te";
+    const per = v.doveva === "meta" ? "" : v.doveva === "paolo" ? " · solo tua" : " · solo di Silvia";
+    info = dataBreve(v.data) + " · " + chi + per;
+  }
+  const tag = v.origine === "gmail" ? '<span class="tag">da email</span>' : "";
+  const cls = e > 0 ? "pos" : e < 0 ? "neg" : "zero";
+  return `<button class="voce" data-id="${esc(v.id)}">
+    <div class="sx"><div class="desc">${esc(v.descrizione || (v.tipo === "conguaglio" ? "Conto azzerato" : "Spesa"))}${tag}</div>
+      <div class="info">${esc(info)}</div></div>
+    <div class="dx"><div class="imp">${euro(centesimi(v))}</div>
+      <div class="eff ${cls}">${e === 0 ? "fuori conto" : segno(e)}</div></div>
+  </button>`;
+}
+function render(){
+  const s = saldoTotale();
+  const box = $("#saldo");
+  box.className = "saldo " + (s > 0 ? "pos" : s < 0 ? "neg" : "");
+  $("#saldo-chi").textContent = s > 0 ? "Silvia ti deve" : s < 0 ? "Devi a Silvia" : "Siete pari";
+  $("#saldo-cifra").textContent = euro(s);
+  $("#btn-azzera").disabled = s === 0;
+
+  const {aperte, chiusi} = periodi();
+  const ultimo = chiusi.length ? chiusi[0].conguaglio : null;
+  $("#saldo-sotto").textContent = ultimo
+    ? "Ultimo azzeramento: " + dataBreve(ultimo.data) + ". Da allora " + aperte.length + (aperte.length === 1 ? " spesa." : " spese.")
+    : aperte.length ? aperte.length + (aperte.length === 1 ? " spesa registrata." : " spese registrate.") : "";
+
+  const listaAperte = $("#aperte");
+  if(aperte.length){
+    listaAperte.innerHTML = aperte.slice().sort(perData).map(rigaVoce).join("");
+  }else{
+    listaAperte.innerHTML = `<div class="vuoto"><p><b>Niente da sistemare</b></p><p>Tocca "Nuova spesa" quando uno dei due paga qualcosa.</p></div>`;
+  }
+
+  $("#box-chiusi").hidden = !chiusi.length;
+  $("#chiusi").innerHTML = chiusi.map(p => {
+    const c = p.conguaglio;
+    const chi = c.pagato === "silvia" ? "Silvia ti ha dato " : "Hai dato a Silvia ";
+    return `<details class="periodo">
+      <summary><div class="sx"><div class="t">Azzerato il ${esc(dataBreve(c.data))}</div>
+        <div class="s">${esc(chi + euro(centesimi(c)))} · ${p.voci.length} ${p.voci.length === 1 ? "spesa" : "spese"}</div></div>
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="lista">${rigaVoce(c)}${p.voci.slice().sort(perData).map(rigaVoce).join("")}</div>
+    </details>`;
+  }).join("");
+  renderAvvisi();
+}
+
+/* ---------- avvisi in cima ---------- */
+function installata(){
+  return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+}
+function rinviato(nome, giorni){
+  const q = Number(localStorage.getItem("rinvio-" + nome) || 0);
+  return q > 0 && (Date.now() - q) / 864e5 < giorni;
+}
+function statoBollette(){
+  try{ return JSON.parse(localStorage.getItem("stato-bollette") || "null"); }catch(_){ return null; }
+}
+async function renderAvvisi(){
+  const avvisi = [];
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(iOS && !installata() && localStorage.getItem("avviso-installa") !== "chiuso"){
+    avvisi.push(`<div class="notice"><div><b>Aggiungi l'app alla schermata Home.</b> Tocca il tasto Condividi di Safari e poi "Aggiungi a Home".
+      Serve davvero: Safari cancella i dati dei siti aperti solo dal browser, mentre l'app installata li tiene.</div>
+      <button class="x" data-chiudi="installa" aria-label="Chiudi">&times;</button></div>`);
+  }
+  if(gh.collegato() && statoSync.stato === "errore"){
+    avvisi.push(`<div class="notice ko"><div><b>Archivio online:</b> ${esc(statoSync.messaggio)}
+      <button data-vai="impostazioni">Apri le impostazioni</button></div></div>`);
+  }
+  if(!gh.collegato() && stato.voci.length >= 3 && localStorage.getItem("avviso-archivio") !== "chiuso"){
+    avvisi.push(`<div class="notice"><div><b>Le spese stanno solo su questo telefono</b> e le bollette dalle email non arrivano.
+      Collega l'archivio online una volta e si sistema per sempre.
+      <div style="margin-top:6px"><button data-vai="impostazioni">Collega l'archivio</button></div></div>
+      <button class="x" data-chiudi="archivio" aria-label="Chiudi">&times;</button></div>`);
+  }
+  const sb = statoBollette();
+  if(gh.collegato() && sb && sb.ultimoControllo){
+    const giorni = (Date.now() - Date.parse(sb.ultimoControllo)) / 864e5;
+    if(giorni > 20 && !rinviato("bollette", 7)){
+      avvisi.push(`<div class="notice ko"><div><b>Le bollette non vengono controllate da ${Math.floor(giorni)} giorni.</b>
+        Il controllo gira sul Mac il 14 e il 28 del mese: probabilmente si è fermato. Dillo a Claude.</div>
+        <button class="x" data-chiudi="bollette" aria-label="Chiudi">&times;</button></div>`);
+    }else if(sb.esito === "ERRORE" || sb.esito === "PARZIALE"){
+      if(!rinviato("bollette-errore-" + sb.ultimoControllo, 3650)){
+        avvisi.push(`<div class="notice ko"><div><b>Ultimo controllo bollette con problemi</b> (${esc(dataLunga(Date.parse(sb.ultimoControllo)))}).
+          Qualche bolletta potrebbe mancare: dillo a Claude.</div>
+          <button class="x" data-chiudi="bollette-errore-${esc(sb.ultimoControllo)}" aria-label="Chiudi">&times;</button></div>`);
+      }
+    }
+  }
+  const ultimo = await store.setting("ultimoBackup");
+  const giorniB = ultimo ? (Date.now() - ultimo) / 864e5 : null;
+  const soglia = gh.collegato() ? 180 : 30;
+  if(stato.voci.length >= 5 && (ultimo == null || giorniB > soglia) && !rinviato("backup", 14)){
+    avvisi.push(`<div class="notice"><div><b>Fai una copia di scorta.</b>
+      ${ultimo == null ? "Non hai ancora salvato un file di backup." : "L'ultimo file risale al " + dataLunga(ultimo) + "."}
+      <div style="margin-top:6px"><button data-fai="esporta">Salva il file di backup</button></div></div>
+      <button class="x" data-chiudi="backup" aria-label="Chiudi">&times;</button></div>`);
+  }
+  $("#notices").innerHTML = avvisi.join("");
+}
+
+/* ---------- schermate ---------- */
+function apri(sel){ $(sel).hidden = false; document.body.style.overflow = "hidden"; }
+function chiudi(sel){ $(sel).hidden = true; document.body.style.overflow = ""; }
+
+function selezionaSeg(sel, valore){
+  document.querySelectorAll(sel + " button").forEach(b => b.classList.toggle("on", b.dataset.v === valore));
+}
+function suggerimenti(){
+  /* le descrizioni piu' usate: un tocco e la voce e' gia' scritta */
+  const conta = new Map();
+  for(const v of stato.voci){
+    if(v.tipo !== "spesa" || !v.descrizione || v.origine === "gmail") continue;
+    const k = normalizza(v.descrizione);
+    const c = conta.get(k) || {n:0, testo:v.descrizione.trim(), doveva:v.doveva, creato:0};
+    c.n++;
+    if((v.creato || 0) > c.creato){ c.creato = v.creato || 0; c.doveva = v.doveva; c.testo = v.descrizione.trim(); }
+    conta.set(k, c);
+  }
+  return [...conta.values()].sort((a, b) => b.n - a.n || b.creato - a.creato).slice(0, 6);
+}
+function apriEdit(v){
+  const nuova = !v;
+  const tipo = v ? v.tipo : "spesa";
+  stato.edit = {id: v ? v.id : null, tipo, pagato: v ? v.pagato : "paolo", doveva: v ? (v.doveva || "meta") : "meta"};
+  $("#edit-title").textContent = tipo === "conguaglio" ? "Azzeramento" : nuova ? "Nuova spesa" : "Modifica spesa";
+  $("#f-importo").value = v ? fmt.format(Number(v.importo)) : "";
+  $("#f-desc").value = v ? (v.descrizione || "") : "";
+  $("#f-data").value = v ? v.data : oggiIso();
+  $("#f-note").value = v ? (v.note || "") : "";
+  $("#campo-desc").hidden = tipo === "conguaglio";
+  $("#campo-doveva").hidden = tipo === "conguaglio";
+  $("#lbl-pagato").textContent = tipo === "conguaglio" ? "Chi ha dato i soldi" : "Chi ha pagato";
+  document.querySelector('#seg-pagato [data-v="paolo"]').textContent = tipo === "conguaglio" ? "Io a Silvia" : "Io";
+  document.querySelector('#seg-pagato [data-v="silvia"]').textContent = tipo === "conguaglio" ? "Silvia a me" : "Silvia";
+  selezionaSeg("#seg-pagato", stato.edit.pagato);
+  selezionaSeg("#seg-doveva", stato.edit.doveva);
+  const s = nuova ? suggerimenti() : [];
+  $("#sugg").innerHTML = s.map((x, i) => `<button type="button" data-i="${i}">${esc(x.testo)}</button>`).join("");
+  $("#sugg")._dati = s;
+  $("#edit-origine").textContent = v && v.origine === "gmail" ? "Arrivata dalle email in automatico."
+    : v && v.origine === "import-excel" ? "Importata dal vecchio foglio Excel." : "";
+  $("#edit-delete").hidden = nuova;
+  $("#edit-delete").textContent = tipo === "conguaglio" ? "Elimina azzeramento" : "Elimina spesa";
+  aggiornaRiepilogo();
+  apri("#screen-edit");
+  if(nuova) $("#f-importo").focus();
+}
+function aggiornaRiepilogo(){
+  const e = stato.edit; if(!e) return;
+  const c = leggiImporto($("#f-importo").value);
+  const finta = {tipo:e.tipo, importo:c / 100, pagato:e.pagato, doveva:e.doveva};
+  const eff = effetto(finta);
+  const box = $("#riepilogo");
+  box.className = "riepilogo " + (eff > 0 ? "pos" : eff < 0 ? "neg" : "");
+  if(!c) box.textContent = "Scrivi l'importo";
+  else if(e.tipo === "conguaglio") box.textContent = eff < 0 ? "Silvia ti ha dato " + euro(eff) : "Hai dato a Silvia " + euro(eff);
+  else if(eff === 0) box.textContent = e.pagato === "paolo" ? "Spesa solo tua: non entra nel conto con Silvia" : "Spesa solo di Silvia: non entra nel conto";
+  else box.textContent = eff > 0 ? "Per questa spesa Silvia ti deve " + euro(eff) : "Per questa spesa devi a Silvia " + euro(eff);
+}
+async function salvaVoce(){
+  const e = stato.edit; if(!e) return;
+  const c = leggiImporto($("#f-importo").value);
+  if(!c){ toast("Scrivi l'importo"); $("#f-importo").focus(); return; }
+  const desc = $("#f-desc").value.trim();
+  if(e.tipo === "spesa" && !desc){ toast("Scrivi cosa hai pagato"); $("#f-desc").focus(); return; }
+  const data = $("#f-data").value || oggiIso();
+  const ora = Date.now();
+  const vecchia = e.id ? await store.get(e.id) : null;
+  const v = Object.assign({}, vecchia || {
+    id: nuovoId(), tipo: e.tipo, categoria: null, origine: "app", creato: ora
+  }, {
+    data, importo: c / 100, descrizione: e.tipo === "conguaglio" ? (vecchia && vecchia.descrizione) || "Conto azzerato" : desc,
+    pagato: e.pagato, doveva: e.tipo === "conguaglio" ? null : e.doveva,
+    note: $("#f-note").value.trim(), aggiornato: ora
+  });
+  await store.put(v);
+  await ricarica();
+  chiudi("#screen-edit");
+  toast(vecchia ? "Modifica salvata" : "Spesa salvata");
+  sincronizza();
+}
+async function eliminaVoce(){
+  const e = stato.edit; if(!e || !e.id) return;
+  if(!confirm(e.tipo === "conguaglio"
+    ? "Eliminare questo azzeramento? Le spese di quel periodo tornano fra quelle da sistemare."
+    : "Eliminare questa spesa?")) return;
+  const v = await store.get(e.id);
+  await store.del(e.id);
+  if(v && v.sha) await store.segnaEliminato({id: v.id, sha: v.sha});
+  await ricarica();
+  chiudi("#screen-edit");
+  toast("Eliminata");
+  sincronizza();
+}
+async function azzera(){
+  const s = saldoTotale();
+  if(!s) return;
+  const testo = s > 0
+    ? "Silvia ti ha dato " + euro(s) + "?\n\nIl conto torna a zero e le spese finiscono fra i conti chiusi."
+    : "Hai dato " + euro(s) + " a Silvia?\n\nIl conto torna a zero e le spese finiscono fra i conti chiusi.";
+  if(!confirm(testo)) return;
+  const ora = Date.now();
+  await store.put({
+    id: nuovoId(), tipo: "conguaglio", data: oggiIso(), importo: Math.abs(s) / 100,
+    descrizione: "Conto azzerato", pagato: s > 0 ? "silvia" : "paolo", doveva: null,
+    categoria: null, note: "", origine: "app", creato: ora, aggiornato: ora
+  });
+  await ricarica();
+  window.scrollTo({top: 0, behavior: "smooth"});
+  toast("Conto azzerato");
+  sincronizza();
+}
+
+/* ---------- backup su file ---------- */
+const pulisci = v => { const c = Object.assign({}, v); delete c.sha; delete c.syncAt; return c; };
+async function esporta(){
+  const dati = {formato: "spese-v1", esportatoIl: new Date().toISOString(), voci: (await store.all()).map(pulisci)};
+  const nome = "spese-" + oggiIso() + ".json";
+  const blob = new Blob([JSON.stringify(dati, null, 1)], {type: "application/json"});
+  const file = new File([blob], nome, {type: "application/json"});
+  let condiviso = false;
+  if(navigator.canShare && navigator.canShare({files: [file]})){
+    try{ await navigator.share({files: [file], title: "Backup Spese"}); condiviso = true; }
+    catch(err){ if(err && err.name === "AbortError"){ toast("Backup annullato"); return; } }
+  }
+  if(!condiviso){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  await store.setSetting("ultimoBackup", Date.now());
+  await renderMetaImpostazioni();
+  renderAvvisi();
+  toast(condiviso ? "Backup salvato" : "Backup pronto");
+}
+async function importa(file){
+  let dati;
+  try{ dati = JSON.parse(await file.text()); }catch(_){ toast("File non valido"); return; }
+  if(!dati || !Array.isArray(dati.voci)){ toast("File non valido"); return; }
+  const sostituisci = confirm("Il file contiene " + dati.voci.length + " voci.\n\n" +
+    "OK = sostituisci tutto quello che c'e' qui\nAnnulla = aggiungi (le voci gia' presenti vengono aggiornate)");
+  const valide = dati.voci.filter(v => v && v.id && v.tipo);
+  const prima = new Map((await store.all()).map(v => [v.id, v]));
+  if(sostituisci){
+    /* quelle che non sono nel file spariscono anche online; le altre tengono il loro sha */
+    const nelFile = new Set(valide.map(v => v.id));
+    for(const v of prima.values()) if(v.sha && !nelFile.has(v.id)) await store.segnaEliminato({id: v.id, sha: v.sha});
+    await store.clear();
+  }
+  const ora = Date.now();
+  for(const v of valide){
+    const esistente = prima.get(v.id);
+    await store.put(Object.assign({}, v, {sha: esistente && esistente.sha, aggiornato: ora}));
+  }
+  await ricarica();
+  await renderMetaImpostazioni();
+  toast("Backup importato");
+  sincronizza();
+}
+async function renderMetaImpostazioni(){
+  const ultimo = await store.setting("ultimoBackup");
+  $("#backup-meta").textContent = "Ultimo file di backup: " + dataLunga(ultimo) + ". " + stato.voci.length + " voci in archivio.";
+  const sb = statoBollette();
+  $("#bollette-stato").textContent = !gh.collegato()
+    ? "Collega l'archivio online per ricevere le bollette lette dalle email."
+    : !sb ? "Il Mac non ha ancora fatto nessun controllo."
+    : "Ultimo controllo: " + dataLunga(Date.parse(sb.ultimoControllo)) + " (" +
+      (sb.esito === "OK" ? "tutto a posto" : sb.esito === "PARZIALE" ? "con qualche problema" : "non riuscito") +
+      (sb.importate ? ", " + sb.importate + (sb.importate === 1 ? " bolletta nuova" : " bollette nuove") : "") + "). Gira sul Mac il 14 e il 28 del mese.";
+}
+
+/* ---------- archivio online (GitHub) ----------
+   Un file JSON per voce in voci/AAAA/, dentro un repository privato.
+   Il telefono e' la copia di lavoro; il Mac ci aggiunge le bollette lette
+   dalle email (solo aggiunte, mai modifiche). Solo il telefono elimina. */
+const GH_REPO = "PaoloB91/spese-dati";
+const GH_BASE = "https://api.github.com/repos/" + GH_REPO;
+const CHIAVE_TOKEN = "spese-gh-token";
+const gh = {
+  token: () => localStorage.getItem(CHIAVE_TOKEN) || "",
+  collegato(){ return !!this.token(); },
+  async chiama(metodo, percorso, corpo){
+    const r = await fetch(GH_BASE + percorso, {
+      method: metodo,
+      cache: "no-store",
+      headers: {
+        "Authorization": "Bearer " + gh.token(),
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      body: corpo ? JSON.stringify(corpo) : undefined
+    });
+    if(metodo === "GET" && (r.status === 404 || r.status === 409)) return null;   // 409 = archivio ancora vuoto
+    if(!r.ok){ const e = new Error("GitHub " + r.status); e.stato = r.status; throw e; }
+    return r.status === 204 ? null : r.json();
+  }
+};
+function testoInBase64(s){
+  const byte = new TextEncoder().encode(s);
+  let bin = "";
+  for(let i = 0; i < byte.length; i += 0x8000) bin += String.fromCharCode.apply(null, byte.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function base64InTesto(b64){
+  const bin = atob(String(b64).replace(/\s/g, ""));
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(arr);
+}
+let sincronizzando = false, risincronizza = false;
+let statoSync = {stato: "spento", messaggio: ""};
+const sporca = v => !v.syncAt || v.syncAt < (v.aggiornato || 0);
+function daSincronizzare(){ return stato.voci.filter(sporca).length; }
+
+async function sincronizza(manuale){
+  if(!gh.collegato()) return;
+  if(sincronizzando){ risincronizza = true; return; }
+  if(!navigator.onLine){
+    statoSync = {stato: "attesa", messaggio: "Senza rete: sincronizzo appena torna la linea."};
+    renderStatoSync(); return;
+  }
+  sincronizzando = true;
+  renderStatoSync();
+  let inviate = 0, arrivate = 0;
+  try{
+    /* 1. voci eliminate qui, da togliere anche online */
+    for(const e of await store.eliminati()){
+      try{
+        await gh.chiama("DELETE", "/contents/" + percorso(e.id), {message: "Elimino " + e.id, sha: e.sha});
+      }catch(err){
+        if(err.stato === 409 || err.stato === 422){   // sha cambiato: rileggo e riprovo
+          const info = await gh.chiama("GET", "/contents/" + percorso(e.id));
+          if(info) await gh.chiama("DELETE", "/contents/" + percorso(e.id), {message: "Elimino " + e.id, sha: info.sha});
+        }else if(err.stato !== 404) throw err;
+      }
+      await store.scordaEliminato(e.id);
+    }
+    /* 2. voci nuove o modificate qui */
+    for(const v of await store.all()){
+      if(!sporca(v)) continue;
+      const corpo = {message: (v.sha ? "Aggiorno " : "Aggiungo ") + (v.descrizione || v.id), content: testoInBase64(JSON.stringify(pulisci(v), null, 1))};
+      if(v.sha) corpo.sha = v.sha;
+      let risp;
+      try{
+        risp = await gh.chiama("PUT", "/contents/" + percorso(v.id), corpo);
+      }catch(err){
+        if(err.stato === 409 || err.stato === 422){
+          const info = await gh.chiama("GET", "/contents/" + percorso(v.id));
+          if(info) corpo.sha = info.sha; else delete corpo.sha;
+          risp = await gh.chiama("PUT", "/contents/" + percorso(v.id), corpo);
+        }else throw err;
+      }
+      const ora = await store.get(v.id);   // nel frattempo potrebbe essere stata modificata ancora
+      if(ora){
+        ora.sha = risp.content.sha;
+        if((ora.aggiornato || 0) === (v.aggiornato || 0)) ora.syncAt = Date.now();
+        await store.put(ora);
+      }
+      inviate++;
+    }
+    /* 3. quello che e' arrivato online da altrove (le bollette dal Mac) */
+    let ramo = localStorage.getItem("spese-ramo");
+    if(!ramo){
+      const info = await gh.chiama("GET", "");
+      ramo = (info && info.default_branch) || "main";
+      localStorage.setItem("spese-ramo", ramo);
+    }
+    const albero = await gh.chiama("GET", "/git/trees/" + encodeURIComponent(ramo) + "?recursive=1");
+    if(albero && Array.isArray(albero.tree)){
+      const locali = new Map((await store.all()).map(v => [v.id, v]));
+      const inUscita = new Set((await store.eliminati()).map(e => e.id));
+      for(const f of albero.tree){
+        if(f.type !== "blob") continue;
+        if(f.path === "stato.json"){
+          if(f.sha !== localStorage.getItem("stato-bollette-sha")){
+            const b = await gh.chiama("GET", "/git/blobs/" + f.sha);
+            if(b && b.content){
+              localStorage.setItem("stato-bollette", base64InTesto(b.content));
+              localStorage.setItem("stato-bollette-sha", f.sha);
+            }
+          }
+          continue;
+        }
+        const m = /^voci\/\d{4}\/(.+)\.json$/.exec(f.path);
+        if(!m) continue;
+        const id = m[1];
+        if(inUscita.has(id)) continue;
+        const loc = locali.get(id);
+        if(loc && (loc.sha === f.sha || sporca(loc))) continue;
+        const b = await gh.chiama("GET", "/git/blobs/" + f.sha);
+        if(!b || !b.content) continue;
+        let v;
+        try{ v = JSON.parse(base64InTesto(b.content)); }catch(_){ continue; }
+        if(!v || v.id !== id) continue;
+        const ora = Date.now();
+        await store.put(Object.assign({}, v, {sha: f.sha, syncAt: ora, aggiornato: Math.min(v.aggiornato || ora, ora)}));
+        arrivate++;
+      }
+    }
+    localStorage.setItem("ultima-sync", String(Date.now()));
+    statoSync = {stato: "ok", messaggio: ""};
+    if(manuale) toast(arrivate ? (arrivate === 1 ? "Arrivata 1 voce" : "Arrivate " + arrivate + " voci") : inviate ? "Inviate " + inviate + " voci" : "Già tutto sincronizzato");
+    else if(arrivate) toast(arrivate === 1 ? "Arrivata 1 voce nuova" : "Arrivate " + arrivate + " voci nuove");
+  }catch(err){
+    if(err.stato === 401 || err.stato === 403) statoSync = {stato: "errore", messaggio: "Chiave non valida o scaduta: ricollega l'archivio."};
+    else if(err.stato === 404) statoSync = {stato: "errore", messaggio: "Archivio online non trovato."};
+    else statoSync = {stato: "attesa", messaggio: "Non sono riuscito a collegarmi, riprovo più tardi."};
+    if(manuale) toast(statoSync.messaggio);
+  }finally{
+    sincronizzando = false;
+    await ricarica();
+    renderStatoSync();
+    renderMetaImpostazioni();
+    if(risincronizza){ risincronizza = false; sincronizza(); }
+  }
+}
+async function collega(token){
+  const pulito = token.trim();
+  if(!pulito){ toast("Incolla la chiave"); return; }
+  localStorage.setItem(CHIAVE_TOKEN, pulito);
+  localStorage.removeItem("spese-ramo");
+  try{
+    const info = await gh.chiama("GET", "");
+    if(!info) throw Object.assign(new Error("archivio non trovato"), {stato: 404});
+    if(info.permissions && info.permissions.push === false) throw Object.assign(new Error("sola lettura"), {stato: 403});
+    localStorage.setItem("spese-ramo", info.default_branch || "main");
+  }catch(err){
+    localStorage.removeItem(CHIAVE_TOKEN);
+    statoSync = {stato: "spento", messaggio: ""};
+    renderStatoSync();
+    toast(err.stato === 401 ? "Chiave non valida" : err.stato === 403 ? "La chiave non può scrivere su questo archivio"
+      : err.stato === 404 ? "Archivio non trovato" : "Non riesco a collegarmi");
+    return;
+  }
+  /* telefono nuovo con voci gia' qui (es. backup importato): vanno tutte mandate */
+  for(const v of await store.all()){ if(!v.sha){ v.syncAt = 0; await store.put(v); } }
+  toast("Archivio collegato");
+  await sincronizza(true);
+}
+function scollega(){
+  if(!confirm("Scollego l'archivio online. Le spese restano su questo telefono, ma le bollette dalle email smettono di arrivare. Procedo?")) return;
+  localStorage.removeItem(CHIAVE_TOKEN);
+  localStorage.removeItem("spese-ramo");
+  statoSync = {stato: "spento", messaggio: ""};
+  renderStatoSync();
+  renderMetaImpostazioni();
+  renderAvvisi();
+  toast("Archivio scollegato");
+}
+function renderStatoSync(){
+  const box = $("#sync-stato");
+  const pendenti = daSincronizzare();
+  let testo, classe = "";
+  if(!gh.collegato()) testo = "Non collegato: le spese stanno solo su questo telefono.";
+  else if(statoSync.stato === "errore"){ testo = statoSync.messaggio; classe = "ko"; }
+  else if(sincronizzando) testo = "Sincronizzo...";
+  else if(pendenti) testo = pendenti + (pendenti === 1 ? " voce da mandare" : " voci da mandare") + (statoSync.messaggio ? ". " + statoSync.messaggio : "");
+  else{
+    const q = Number(localStorage.getItem("ultima-sync") || 0);
+    testo = "Tutto salvato online" + (q ? " (ultima sincronizzazione: " + dataLunga(q) + ")" : "") + ".";
+    classe = "ok";
+  }
+  box.textContent = testo;
+  box.className = "meta " + classe;
+  $("#sync-collegato").hidden = !gh.collegato();
+  $("#sync-scollegato").hidden = gh.collegato();
+}
+
+/* ---------- avvio ---------- */
+async function ricarica(){
+  stato.voci = await store.all();
+  render();
+}
+async function init(){
+  await ricarica();
+  if(navigator.storage && navigator.storage.persist){ try{ await navigator.storage.persist(); }catch(_){} }
+  renderStatoSync();
+  sincronizza();
+}
+
+/* ---------- eventi ---------- */
+$("#btn-new").addEventListener("click", () => apriEdit(null));
+$("#btn-azzera").addEventListener("click", azzera);
+document.querySelector("main").addEventListener("click", async e => {
+  const b = e.target.closest(".voce");
+  if(b){ const v = await store.get(b.dataset.id); if(v) apriEdit(v); return; }
+  const x = e.target.closest("[data-chiudi]");
+  if(x){
+    const n = x.dataset.chiudi;
+    if(n === "backup" || n.startsWith("bollette")) localStorage.setItem("rinvio-" + n, String(Date.now()));
+    else localStorage.setItem("avviso-" + n, "chiuso");
+    renderAvvisi(); return;
+  }
+  if(e.target.closest("[data-fai=esporta]")){ esporta(); return; }
+  if(e.target.closest("[data-vai=impostazioni]")) apriImpostazioni();
+});
+$("#edit-cancel").addEventListener("click", () => chiudi("#screen-edit"));
+$("#edit-save").addEventListener("click", salvaVoce);
+$("#edit-delete").addEventListener("click", eliminaVoce);
+$("#f-importo").addEventListener("input", aggiornaRiepilogo);
+$("#f-importo").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); if(!$("#campo-desc").hidden) $("#f-desc").focus(); } });
+$("#f-desc").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); e.target.blur(); } });
+$("#seg-pagato").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b || !stato.edit) return;
+  stato.edit.pagato = b.dataset.v; selezionaSeg("#seg-pagato", b.dataset.v); aggiornaRiepilogo();
+});
+$("#seg-doveva").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b || !stato.edit) return;
+  stato.edit.doveva = b.dataset.v; selezionaSeg("#seg-doveva", b.dataset.v); aggiornaRiepilogo();
+});
+$("#sugg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b || !stato.edit) return;
+  const s = $("#sugg")._dati[Number(b.dataset.i)];
+  $("#f-desc").value = s.testo;
+  if(s.doveva){ stato.edit.doveva = s.doveva; selezionaSeg("#seg-doveva", s.doveva); aggiornaRiepilogo(); }
+});
+
+function apriImpostazioni(){ renderMetaImpostazioni(); renderStatoSync(); apri("#screen-settings"); }
+$("#btn-settings").addEventListener("click", apriImpostazioni);
+$("#settings-back").addEventListener("click", () => chiudi("#screen-settings"));
+$("#btn-collega").addEventListener("click", () => { const t = $("#gh-token").value; $("#gh-token").value = ""; collega(t); });
+$("#btn-sync").addEventListener("click", () => sincronizza(true));
+$("#btn-scollega").addEventListener("click", scollega);
+$("#btn-export").addEventListener("click", esporta);
+$("#btn-import").addEventListener("click", () => $("#file-import").click());
+$("#file-import").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if(f) importa(f);
+});
+window.addEventListener("online", () => sincronizza());
+/* riaprendo l'app dal multitasking si tirano giu' le bollette arrivate nel frattempo */
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") sincronizza(); });
+
+window.addEventListener("popstate", () => {
+  const aperte = ["#screen-edit", "#screen-settings"].filter(s => !$(s).hidden);
+  if(aperte.length){ chiudi(aperte[aperte.length - 1]); history.pushState(null, ""); }
+});
+history.pushState(null, "");
+
+init();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+    let ricaricato = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if(ricaricato) return;
+      ricaricato = true;
+      location.reload();
+    });
+  });
+}
+</script>
+</body>
+</html>
