@@ -138,6 +138,29 @@ textarea{resize:vertical;min-height:70px}
   z-index:100;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 @media (prefers-color-scheme:dark){#toast{background:#eef0f4;color:#101217}}
+
+/* schede Conto / Bollette */
+.tabs{display:flex;background:var(--line);border-radius:12px;padding:3px;gap:3px;margin-top:6px}
+.tabs button{flex:1;min-height:40px;border-radius:10px;font-weight:600;color:var(--muted);font-size:15px}
+.tabs button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+/* bollette */
+.bstato{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;margin:6px 0 16px;font-size:14px;color:var(--muted)}
+.bstato b{color:var(--text)}
+.bstato.ko{border-left:4px solid var(--danger)}
+.bstato.ok{border-left:4px solid var(--pos)}
+.bcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 12px 14px;margin-bottom:12px}
+.bhead{display:flex;align-items:baseline;gap:8px;margin:0 2px 10px}
+.bhead b{font-size:16px}
+.bhead .bsub{font-size:13px;color:var(--muted);flex:1}
+.bhead .bconta{font-size:13px;font-weight:600;color:var(--muted)}
+.celle{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.cella{border-radius:10px;padding:8px 4px;text-align:center;border:1px solid var(--line);min-height:54px;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.cella .cm{font-size:13px;font-weight:700}
+.cella .ci{font-size:12px;font-variant-numeric:tabular-nums}
+.cella.ok{background:var(--pos-soft);border-color:transparent;color:var(--pos)}
+.cella.manca{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.cella.attesa{color:var(--muted);border-style:dashed}
 </style>
 </head>
 <body>
@@ -149,9 +172,14 @@ textarea{resize:vertical;min-height:70px}
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
   </div>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-vista="conto" class="on">Conto</button>
+    <button type="button" data-vista="bollette">Bollette</button>
+  </nav>
 </header>
 
 <main>
+<div id="vista-conto">
   <section class="saldo" id="saldo">
     <p class="chi" id="saldo-chi">Siete pari</p>
     <p class="cifra" id="saldo-cifra">0,00 &euro;</p>
@@ -168,6 +196,15 @@ textarea{resize:vertical;min-height:70px}
     <h2 class="sez">Conti chiusi</h2>
     <div id="chiusi"></div>
   </div>
+</div>
+
+<div id="vista-bollette" hidden>
+  <div class="bstato" id="bollette-riepilogo"></div>
+  <div id="bollette-griglie"></div>
+  <h2 class="sez" style="margin-top:18px">Bollette inserite</h2>
+  <p class="meta" id="bollette-totali" style="margin:-4px 2px 8px"></p>
+  <div class="lista" id="bollette-lista"></div>
+</div>
 </main>
 
 <button class="fab" id="btn-new">
@@ -445,7 +482,132 @@ function render(){
       <div class="lista">${rigaVoce(c)}${p.voci.slice().sort(perData).map(rigaVoce).join("")}</div>
     </details>`;
   }).join("");
+  renderBollette();
   renderAvvisi();
+}
+
+/* ---------- bollette: c'e' tutto? ----------
+   Per ogni utenza, un riquadro per mese (o bimestre) da `inizio` a oggi.
+   `inizio` = il primo periodo che deve stare in quest'app: quelli prima sono
+   gia' stati sistemati con Silvia nel foglio vecchio "Utenze gia' inserite
+   in divisione spese". Se Paolo decide che altri periodi erano gia' sistemati,
+   si sposta `inizio` in avanti. La bolletta si riconosce dalla descrizione,
+   quindi vale anche per quelle inserite a mano. */
+const BOLLETTE = [
+  {chiave: "telefono", nome: "Telefono", sub: "Wind, ogni mese", mesi: 1, inizio: "2026-02",
+   riconosci: /\bwind\b|telefon/i, giorniTolleranza: 16},
+  {chiave: "luce", nome: "Luce", sub: "Unoenergy, ogni due mesi", mesi: 2, inizio: "2026-02",
+   riconosci: /\bluce\b|energia elettrica/i, giorniTolleranza: 30},
+  {chiave: "gas", nome: "Gas", sub: "Unoenergy, ogni due mesi", mesi: 2, inizio: "2026-03",
+   riconosci: /\bgas\b/i, giorniTolleranza: 30}
+];
+const MESE_RE = /\b(gen(?:naio)?|feb(?:braio)?|mar(?:zo)?|apr(?:ile)?|mag(?:gio)?|giu(?:gno)?|lug(?:lio)?|ago(?:sto)?|set(?:tembre)?|ott(?:obre)?|nov(?:embre)?|dic(?:embre)?)\b\.?(?:\s+(\d{4}))?/gi;
+const chiaveMese = (a, m) => a + "-" + String(m).padStart(2, "0");
+function spostaMese(k, n){
+  const [a, m] = k.split("-").map(Number);
+  const d = new Date(a, m - 1 + n, 1);
+  return chiaveMese(d.getFullYear(), d.getMonth() + 1);
+}
+function tipoBolletta(v){
+  if(v.tipo !== "spesa") return null;
+  const b = BOLLETTE.find(b => b.riconosci.test(v.descrizione || ""));
+  return b ? b.chiave : null;
+}
+/* "Unoenergy gas luglio - agosto 2026" -> ["2026-07","2026-08"]; senza mesi nel testo vale il mese della data */
+function mesiBolletta(v){
+  const trovati = [...String(v.descrizione || "").matchAll(MESE_RE)].map(m => ({
+    mese: MESI.indexOf(m[1].slice(0, 3).toLowerCase()) + 1, anno: m[2] ? Number(m[2]) : null
+  }));
+  if(!trovati.length) return [String(v.data || "").slice(0, 7)];
+  let anno = Number(String(v.data || "").slice(0, 4)) || new Date().getFullYear();
+  /* nessun anno scritto e mese dopo quello della data: la bolletta e' dell'anno prima ("gas nov-dic" pagato a gennaio) */
+  const meseData = Number(String(v.data || "").slice(5, 7)) || 12;
+  if(!trovati.some(t => t.anno) && trovati[trovati.length - 1].mese > meseData) anno--;
+  for(let i = trovati.length - 1; i >= 0; i--){   // l'anno scritto vale anche per i mesi prima
+    if(trovati[i].anno) anno = trovati[i].anno;
+    else if(i < trovati.length - 1 && trovati[i].mese > trovati[i + 1].mese) anno = trovati[i + 1].anno - 1;
+    trovati[i].anno = anno;
+  }
+  const da = chiaveMese(trovati[0].anno, trovati[0].mese);
+  const a = chiaveMese(trovati[trovati.length - 1].anno, trovati[trovati.length - 1].mese);
+  const out = [];
+  for(let k = da; k <= a && out.length < 12; k = spostaMese(k, 1)) out.push(k);
+  return out;
+}
+function prossimoControllo(){
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  for(let i = 0; i < 40; i++){
+    const g = new Date(d); g.setDate(d.getDate() + i);
+    if(g.getDate() === 14 || g.getDate() === 28) return g;
+  }
+  return null;
+}
+function renderBollette(){
+  const oggi = new Date();
+  const meseOggi = chiaveMese(oggi.getFullYear(), oggi.getMonth() + 1);
+  const bollette = stato.voci.filter(v => tipoBolletta(v));
+  let mancanti = 0;
+  $("#bollette-griglie").innerHTML = BOLLETTE.map(b => {
+    const mie = bollette.filter(v => tipoBolletta(v) === b.chiave).map(v => ({v, mesi: mesiBolletta(v)}));
+    const celle = [];
+    let entrate = 0, attese = 0;
+    for(let k = b.inizio; k <= meseOggi; k = spostaMese(k, b.mesi)){
+      const periodo = [];
+      for(let i = 0; i < b.mesi; i++) periodo.push(spostaMese(k, i));
+      const fine = periodo[periodo.length - 1];
+      const trovate = mie.filter(x => x.mesi.some(m => periodo.includes(m))).map(x => x.v);
+      const [af, mf] = spostaMese(fine, 1).split("-").map(Number);
+      const scadenzaArrivo = new Date(af, mf - 1, b.giorniTolleranza, 23, 59);
+      const etichetta = periodo.map(m => MESI[Number(m.slice(5)) - 1]).join("-") +
+        (k.slice(0, 4) !== String(oggi.getFullYear()) ? " " + k.slice(2, 4) : "");
+      let cls, testo, id = "";
+      if(trovate.length){
+        cls = "ok"; entrate++;
+        testo = fmt.format(trovate.reduce((s, v) => s + centesimi(v), 0) / 100);
+        id = trovate[0].id;
+      }else if(oggi <= scadenzaArrivo){
+        cls = "attesa"; testo = "in arrivo"; attese++;
+      }else{
+        cls = "manca"; testo = "manca"; mancanti++;
+      }
+      celle.push(`<button type="button" class="cella ${cls}"${id ? ` data-id="${esc(id)}"` : ""}>
+        <span class="cm">${esc(etichetta)}</span><span class="ci">${esc(testo)}</span></button>`);
+    }
+    const dovute = celle.length - attese;
+    return `<div class="bcard"><div class="bhead"><b>${esc(b.nome)}</b><span class="bsub">${esc(b.sub)}</span>
+      <span class="bconta">${entrate} su ${dovute}</span></div><div class="celle">${celle.join("")}</div></div>`;
+  }).join("");
+
+  const sb = statoBollette();
+  const prossimo = prossimoControllo();
+  const quando = prossimo ? prossimo.getDate() + " " + MESI[prossimo.getMonth()] : "";
+  let testo = mancanti
+    ? `<b>${mancanti === 1 ? "Manca 1 bolletta" : "Mancano " + mancanti + " bollette"}</b> (in rosso). Toccane una verde per aprirla.`
+    : "<b>Ci sono tutte.</b> Toccane una per aprirla.";
+  if(!gh.collegato()) testo += "<br>Archivio online non collegato: le bollette dalle email non arrivano.";
+  else if(sb && sb.ultimoControllo){
+    testo += `<br>Ultimo controllo email: ${esc(dataBreve(sb.ultimoControllo.slice(0, 10)))}` +
+      (sb.esito === "OK" ? "" : " (con problemi)") + `. Prossimo: ${esc(quando)}.`;
+  }
+  const box = $("#bollette-riepilogo");
+  box.className = "bstato " + (mancanti ? "ko" : "ok");
+  box.innerHTML = testo;
+
+  const tot = bollette.reduce((s, v) => s + centesimi(v), 0);
+  const silvia = bollette.reduce((s, v) => s + Math.max(0, effetto(v)), 0);
+  $("#bollette-totali").textContent = bollette.length
+    ? bollette.length + (bollette.length === 1 ? " bolletta, " : " bollette, ") + euro(tot) + " in tutto, " + euro(silvia) + " a carico di Silvia."
+    : "";
+  $("#bollette-lista").innerHTML = bollette.length
+    ? bollette.slice().sort(perData).map(rigaVoce).join("")
+    : `<div class="vuoto"><p>Nessuna bolletta ancora.</p></div>`;
+}
+function mostraVista(nome){
+  $("#vista-conto").hidden = nome !== "conto";
+  $("#vista-bollette").hidden = nome !== "bollette";
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.vista === nome));
+  try{ localStorage.setItem("vista", nome); }catch(_){}
+  window.scrollTo(0, 0);
 }
 
 /* ---------- avvisi in cima ---------- */
@@ -887,9 +1049,13 @@ async function init(){
 
 /* ---------- eventi ---------- */
 $("#btn-new").addEventListener("click", () => apriEdit(null));
+$("#tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-vista]"); if(b) mostraVista(b.dataset.vista);
+});
+try{ if(localStorage.getItem("vista") === "bollette") mostraVista("bollette"); }catch(_){}
 $("#btn-azzera").addEventListener("click", azzera);
 document.querySelector("main").addEventListener("click", async e => {
-  const b = e.target.closest(".voce");
+  const b = e.target.closest(".voce, .cella[data-id]");
   if(b){ const v = await store.get(b.dataset.id); if(v) apriEdit(v); return; }
   const x = e.target.closest("[data-chiudi]");
   if(x){
