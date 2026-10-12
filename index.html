@@ -489,14 +489,15 @@ function render(){
 /* ---------- bollette: c'e' tutto? ----------
    Per ogni utenza, un riquadro per mese (o bimestre) da `inizio` a oggi.
    `inizio` = il primo periodo che deve stare in quest'app: quelli prima sono
-   gia' stati sistemati con Silvia nel foglio vecchio "Utenze gia' inserite
-   in divisione spese". Se Paolo decide che altri periodi erano gia' sistemati,
-   si sposta `inizio` in avanti. La bolletta si riconosce dalla descrizione,
-   quindi vale anche per quelle inserite a mano. */
+   gia' sistemati con Silvia. Il 2026-10-12 Paolo ha messo in pari Wind fino
+   ad aprile e luce fino ad aprile-maggio 2026 (gas da marzo-aprile e' nell'app).
+   Se un domani altri periodi risultano gia' sistemati, si sposta `inizio` in
+   avanti. La bolletta si riconosce dalla descrizione, quindi vale anche per
+   quelle inserite a mano. */
 const BOLLETTE = [
-  {chiave: "telefono", nome: "Telefono", sub: "Wind, ogni mese", mesi: 1, inizio: "2026-02",
+  {chiave: "telefono", nome: "Telefono", sub: "Wind, ogni mese", mesi: 1, inizio: "2026-05",
    riconosci: /\bwind\b|telefon/i, giorniTolleranza: 16},
-  {chiave: "luce", nome: "Luce", sub: "Unoenergy, ogni due mesi", mesi: 2, inizio: "2026-02",
+  {chiave: "luce", nome: "Luce", sub: "Unoenergy, ogni due mesi", mesi: 2, inizio: "2026-06",
    riconosci: /\bluce\b|energia elettrica/i, giorniTolleranza: 30},
   {chiave: "gas", nome: "Gas", sub: "Unoenergy, ogni due mesi", mesi: 2, inizio: "2026-03",
    riconosci: /\bgas\b/i, giorniTolleranza: 30}
